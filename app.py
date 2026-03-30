@@ -23,7 +23,6 @@ def set_bg(image_file):
             background-attachment: fixed;
         }}
 
-        /* Dark overlay for readability */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -48,50 +47,54 @@ def set_bg(image_file):
         unsafe_allow_html=True
     )
 
-# Call function
+# Apply background
 set_bg("bg.png")
-# ---------- HERO SECTION ----------
+
+# ---------- TITLE ----------
 st.markdown(
     """
     <h1 style='font-size:60px;'>⚡ Energy Efficiency Prediction App</h1>
-    <p style='font-size:20px;'>Upload your dataset, compare models, and predict results instantly.</p>
+    <p style='font-size:20px;'>Upload your dataset OR use default dataset to compare models and predict results.</p>
     <br><br>
     """,
     unsafe_allow_html=True
 )
 
-# ---------- FILE UPLOAD ----------
-uploaded_file = st.file_uploader("Upload your dataset", type=["csv", "xlsx"])
+# ---------- FILE INPUT ----------
+uploaded_file = st.file_uploader("Upload your dataset (optional)", type=["csv", "xlsx"])
 
+# Use uploaded OR default
 if uploaded_file is not None:
+    st.success("Using uploaded dataset ✅")
 
-    # Read file
     if uploaded_file.name.endswith(".csv"):
         data = pd.read_csv(uploaded_file)
     else:
         data = pd.read_excel(uploaded_file)
 
-    st.success("File uploaded successfully ✅")
+else:
+    st.info("Using default dataset 📁")
+    data = pd.read_excel("ENB2012_data.xlsx")  # 👈 YOUR FILE NAME
 
-    # Preview
-    st.subheader("📊 Dataset Preview")
-    st.dataframe(data.head())
+# ---------- PREVIEW ----------
+st.subheader("📊 Dataset Preview")
+st.dataframe(data.head())
 
-    # Select target and features
-    target = st.selectbox("Select Target Column", data.columns)
-    features = st.multiselect("Select Feature Columns", data.columns)
+# ---------- COLUMN SELECTION ----------
+target = st.selectbox("Select Target Column", data.columns)
+features = st.multiselect("Select Feature Columns", data.columns)
 
-    if target and features:
+# ---------- MODEL ----------
+if target and features:
 
+    try:
         X = data[features]
         y = data[target]
 
-        # Split
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
 
-        # Models
         models = {
             "Linear Regression": LinearRegression(),
             "Decision Tree": DecisionTreeRegressor(),
@@ -100,18 +103,17 @@ if uploaded_file is not None:
 
         results = {}
 
-        # Train all models
         for name, model in models.items():
             model.fit(X_train, y_train)
             score = model.score(X_test, y_test)
             results[name] = score
 
-        # Show results
+        # Results
         st.subheader("📊 Model Comparison")
         for name, score in results.items():
             st.write(f"{name}: {score:.4f}")
 
-        # Visual graph
+        # Graph
         results_df = pd.DataFrame(list(results.items()), columns=["Model", "Accuracy"])
         results_df = results_df.set_index("Model")
 
@@ -137,5 +139,8 @@ if uploaded_file is not None:
             prediction = best_model.predict([user_input])
             st.success(f"Predicted Value: {prediction[0]}")
 
+    except Exception as e:
+        st.error(f"Error: {e}")
+
 else:
-    st.info("Please upload a CSV or Excel file to continue")
+    st.warning("Please select target and features")
